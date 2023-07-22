@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- init section is always evaluated once per architecture -->
+    <trace enable="true"/>
+    <init>
+        <log text="GooglePlayPlugin init"/>
+    </init>
+
+
+    <androidManifestUpdates>
+
+        <uses-permission android:name="android.permission.INTERNET" />
+        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+       
+    </androidManifestUpdates>
+
+    <!-- optional additions to proguard -->
+    <proguardAdditions>
+        <insert><![CDATA[
+      -keepattributes Signature
+      -dontskipnonpubliclibraryclassmembers
+
+     -keepclassmembers class com.epicgames.ue4.GameActivity {
+            public <methods>;
+            public <fields>;
+     }
+    ]]></insert>
+    </proguardAdditions>
+    
+    <!-- optional files or directories to copy to Intermediate/Android/APK -->
+    <resourceCopies>
+        <copyDir src="$S(PluginDir)/../../ThirdPartyLibraries/Android"
+                 dst="$S(BuildDir)" />
+    </resourceCopies>
+
+    <AARImports>
+        <replace find="com.google.android.gms,play-services-games,23.0.0" with="com.google.android.gms,play-services-games-v2,17.0.0"/>
+    </AARImports>
+    
+    <gameActivityImportAdditions>
+        <insert>
+            import androidx.annotation.NonNull;
+            import com.google.android.gms.games.AuthenticationResult;
+            import com.google.android.gms.games.PlayGames;
+            import com.google.android.gms.games.PlayGamesSdk;
+            import com.google.android.gms.games.GamesSignInClient;
+            import com.google.android.gms.games.Player;
+            import com.google.android.gms.tasks.OnCompleteListener;
+            import com.google.android.gms.tasks.OnSuccessListener;
+            import com.google.android.gms.tasks.Task;
+        </insert>
+    </gameActivityImportAdditions>
+
+    <gameActivityOnCreateAdditions>
+        <insert>
+            <![CDATA[
+                
+            PlayGamesSdk.initialize(this);
+            gamesSignInClient = PlayGames.getGamesSignInClient(this);
+    
+            gamesSignInClient.isAuthenticated().addOnCompleteListener(new OnCompleteListener<AuthenticationResult>() 
+            {
+                @Override
+                public void onComplete(@NonNull Task<AuthenticationResult> task) 
+                {
+                    boolean isAuthenticated = (task.isSuccessful() && task.getResult().isAuthenticated());
+    
+                    if (isAuthenticated) 
+                    {
+                        AndroidThunkJava_GetUserData();
+                    }
+                }
+            });
+                
+		]]>
+        </insert>
+    </gameActivityOnCreateAdditions>
+
+    <gameActivityClassAdditions>
+            <insert>
+                <![CDATA[
+                   public GamesSignInClient gamesSignInClient;
+
+                    public String GooglePGS_PlayerId = ""; 
+                    public String GooglePGS_DisplayName = "";
+                    
+                    
+                    public void AndroidThunkJava_TryLogin()
+                    {
+                        gamesSignInClient.signIn().addOnSuccessListener( new OnSuccessListener<AuthenticationResult>() {
+                            @Override
+                            public void onSuccess(AuthenticationResult authenticationResult) {
+                                if(authenticationResult.isAuthenticated()){
+                                    AndroidThunkJava_GetUserData();
+                                }
+                            }
+                        });
+                    }
+                    
+                    public void AndroidThunkJava_GetUserData()
+                    {
+                        PlayGames.getPlayersClient(this).getCurrentPlayer().addOnCompleteListener(new OnCompleteListener<Player>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Player> task) {
+                                if(task.isSuccessful())
+                                {
+                                   GooglePGS_PlayerId = task.getResult().getPlayerId();
+                                   GooglePGS_DisplayName = task.getResult().getDisplayName();
+
+                                }
+                            }
+                        });
+                    }
+                    
+                    public String AndroidThunkJava_GetGooglePGSPlayerId()
+                    {
+                        return GooglePGS_PlayerId;
+                    }
+                    
+                     public String AndroidThunkJava_GetGoogleDisplayName()
+                    {
+                        return GooglePGS_DisplayName;
+                    }
+                
+                ]]>
+            </insert>
+    </gameActivityClassAdditions>
+</root>
+
